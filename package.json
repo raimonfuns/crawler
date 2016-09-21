@@ -14,7 +14,8 @@
   },
   "devDependencies": {},
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "itjuzi": "nodemon demo/itjuzi/app.js",
+    "cnode": "nodemon demo/cnode/app.js"
   },
   "author": "raimonfuns",
   "license": "ISC"

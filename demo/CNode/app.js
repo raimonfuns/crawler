@@ -3,15 +3,20 @@
 var Koa = require('koa')
 var cheerio = require('cheerio')
 var superagent = require('superagent')
-var utils = require('./utils')
+var utils = require('../../utils')
+var url = require('url')
 
 var app = Koa()
+
+var CNODE_URL = 'https://cnodejs.org/'
+var PAGE_SUM = 1
+var ASYNC_LIMIT = 5
 
 // 获取公司列表页面
 app.use(function *(next) {
   var pages = yield getPagesList()
-  var urlList = getUrlsList(pages)  
-  var infoList = yield getInfoList(urlList)
+  var topicUrls = getUrlsList(pages)  
+  var infoList = yield getInfoList(topicUrls)
 
   this.body = infoList
 })
@@ -19,10 +24,9 @@ app.use(function *(next) {
 // 获取要所有要抓取的网页的url
 function getPageUrlsList(count) {
   var result = []
-  var url = 'http://www.itjuzi.com/company'
 
   for (var i = 1; i <= count; i++) {
-    result.push(url + '?page=' + i)
+    result.push(CNODE_URL + '?tab=all&page=' + i)
   }
 
   return result
@@ -31,10 +35,10 @@ function getPageUrlsList(count) {
 // 获取所有要抓取网页的内容
 function getPagesList() {
   var pages = []
-  var urls = getPageUrlsList(100)
+  var urls = getPageUrlsList(PAGE_SUM)
 
   console.log('要抓取的网页: \n', urls)
-  return utils.asyncMapLimit(urls, 10, 
+  return utils.asyncMapLimit(urls, ASYNC_LIMIT, 
     function (url, callback) {
       superagent
         .get(url)
@@ -49,32 +53,35 @@ function getPagesList() {
   )
 }
 
-// 获取所有要抓取的公司的url
+// 获取所有要抓取的文章的url
 function getUrlsList(pages) {
-  var items = []
+  var topicUrls = []
 
   for (var i = 0, len = pages.length; i < len; i++) {
     var $ = cheerio.load(pages[i])
-    $('.main .list-main-icnset .pic a').each(function (idx, element) {
-      items.push($(element).attr('href'))
+    $('#topic_list .topic_title').each(function (idx, element) {
+      var $element = $(element)
+      var href = url.resolve(CNODE_URL, $element.attr('href'))
+      topicUrls.push(href)
     })
   }
 
-  return items
+  return topicUrls
 }
 
 // 获取所有公司的网页详情
-function getInfoList(urlList) {
+function getInfoList(topicUrls) {
   var infoList = []
 
-  console.log('要抓取的公司网址: \n', urlList)
-  return utils.asyncMapLimit(urlList, 10, 
-    function (url, callback) {
+  console.log('要抓取的文章的url: \n', topicUrls)
+  return utils.asyncMapLimit(topicUrls, ASYNC_LIMIT, 
+    function (topicUrl, callback) {
       superagent
-        .get(url)
+        .get(topicUrl)
         .end(function(err, res){  
-          infoList.push(getInfo(res.text))
-          callback(null, url);
+          console.log('fetch ' + topicUrl + ' successful');
+          infoList.push(getInfo(res.text, topicUrl))
+          callback(null, topicUrl)
         })
     }, 
     function () {
@@ -84,16 +91,14 @@ function getInfoList(urlList) {
 }
 
 // 获取公司的产品、名称、地址、招聘url
-function getInfo(text) {
-  var result = {}
+function getInfo(text, topicUrl) {
   var $ = cheerio.load(text)
 
-  result.product = $('.title b').children()[0].prev.data.replace(/\n|\t/g, '')
-  result.name = $('.block-inc-info .block').eq(2).find('span').eq(0).text().replace('公司全称：', '')
-  result.location = $('.aboutus').eq(0).find('li').eq(2).find('span').text()
-  result.hrUrl = '' // 由于访问www.itjuzi.com太多次，IP被禁了，访问不了，无法继续下去，所以这一步没有完成。
-
-  return result
+  return {
+    title: $('.topic_full_title').text().trim(),
+    href: topicUrl,
+    comment1: $('.reply_content').eq(0).text().trim()
+  }
 }
 
 app.listen(3000, function () {

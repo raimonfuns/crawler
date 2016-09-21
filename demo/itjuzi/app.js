@@ -3,7 +3,7 @@
 var Koa = require('koa')
 var cheerio = require('cheerio')
 var superagent = require('superagent')
-var utils = require('./utils')
+var utils = require('../../utils')
 
 var app = Koa()
 
