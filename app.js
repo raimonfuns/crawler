@@ -31,11 +31,11 @@ function getPageUrlsList(count) {
 // 获取所有要抓取网页的内容
 function getPagesList() {
   var pages = []
-  var urls = getPageUrlsList(1)
+  var urls = getPageUrlsList(100)
 
   console.log('要抓取的网页: \n', urls)
 
-  return utils.asyncMapLimit(urls, 10, 
+  return utils.asyncMapLimit(urls, 1000, 
     function (url, callback) {
       superagent
         .get(url)
