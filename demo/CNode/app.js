@@ -34,7 +34,7 @@ function getPagesList() {
   var urls = getPageUrlsList(100)
 
   console.log('要抓取的网页: \n', urls)
-  return utils.asyncMapLimit(urls, 1000, 
+  return utils.asyncMapLimit(urls, 10, 
     function (url, callback) {
       superagent
         .get(url)
